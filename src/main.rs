@@ -124,7 +124,7 @@ fn main() {
             p1.scale_by(grid_size),
             p2.scale_by(grid_size),
             4.0,
-            Color::MAGENTA,
+            Color::BLUE,
         );
         d.draw_circle_v(p1.scale_by(grid_size), PLAYER_RADIUS, Color::MAGENTA);
         d.draw_circle_v(p3.scale_by(grid_size), PLAYER_RADIUS, Color::YELLOW);
