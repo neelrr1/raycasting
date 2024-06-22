@@ -2,5 +2,5 @@
 
 Raycasting implementation in Rust + Raylib!
 
-# References
+## References
 * https://lodev.org/cgtutor/raycasting.html
