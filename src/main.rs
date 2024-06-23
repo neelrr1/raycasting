@@ -12,16 +12,16 @@ const SENS: f32 = 0.005;
 const GRID_ROWS: i32 = 10;
 const GRID_COLS: i32 = 10;
 const GRID_LINE_THICK: f32 = 1.0;
-const GRID_SIZE: f32 = 20.0;
 const PLAYER_RADIUS: f32 = 10.0;
 // setting too low can cause performance issues due to floating point math
 const EPS: f32 = 1e-4;
 const FOV: f32 = 90.0;
 
-const SIDE_SHADING: f32 = 0.75;
+const SIDE_SHADING: f32 = 0.85;
 
 const MINIMAP_PADDING: f32 = 5.0;
 const MINIMAP_SIZE: f32 = 200.0;
+const GRID_SIZE: f32 = MINIMAP_SIZE / GRID_ROWS as f32;
 
 fn wasd(d: &RaylibDrawHandle, p: &mut Vector2, dir: Vector2) {
     let inv_dir = Vector2::new(-dir.y, dir.x);
