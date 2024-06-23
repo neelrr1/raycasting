@@ -181,12 +181,12 @@ fn main() {
         dir.rotate(d.get_mouse_delta().x * SENS);
 
         let ortho = Vector2::new(-dir.y, dir.x);
-        let camera_plane_start = p1 + dir + ortho;
-        let camera_plane_end = p1 + dir - ortho;
+        let camera_plane_start = p1 + dir - ortho;
+        let camera_plane_end = p1 + dir + ortho;
 
         for x in 0..d.get_screen_width() {
             let t =
-                camera_plane_end.lerp(camera_plane_start, x as f32 / d.get_screen_width() as f32);
+                camera_plane_start.lerp(camera_plane_end, x as f32 / d.get_screen_width() as f32);
             let (p2, collided_color) = find_collision(p1, t - p1);
 
             if let Some(c) = collided_color {
