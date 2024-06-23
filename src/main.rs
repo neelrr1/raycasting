@@ -14,7 +14,8 @@ const GRID_COLS: i32 = 10;
 const GRID_LINE_THICK: f32 = 1.0;
 const GRID_SIZE: f32 = 20.0;
 const PLAYER_RADIUS: f32 = 10.0;
-const EPS: f32 = 1e-3;
+// setting too low can cause performance issues due to floating point math
+const EPS: f32 = 1e-4;
 const FOV: f32 = 90.0;
 
 const MINIMAP_PADDING: f32 = 5.0;
@@ -84,9 +85,6 @@ fn snap_step(p: Vector2, dir: Vector2) -> Vector2 {
     if dir.x == 0.0 {
         return Vector2::new(p.x, cy);
     }
-    if dir.y == 0.0 {
-        return Vector2::new(cx, p.y);
-    }
 
     let m = dir.y / dir.x;
     let cxv = Vector2::new(cx, m * (cx - p.x) + p.y);
@@ -121,17 +119,15 @@ fn on_grid(p: Vector2) -> bool {
 
 fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Color>) {
     let mut p2 = p;
-    let mut i = 0;
     loop {
         p2 = snap_step(p2 + dir * EPS, dir);
 
-        if !on_grid(p2) || i > 100 {
+        if !on_grid(p2) {
             return (p2, None);
         }
         if let Some(c) = collision(p2 + dir * EPS) {
             return (p2, Some(c));
         }
-        // i += 1
     }
 }
 
@@ -227,6 +223,6 @@ fn main() {
     }
 }
 /* TODO:
- * Bug fix - lowering EPS value causes infinite loop in collision detector
  * Textures!
+ * Add shading
 */
