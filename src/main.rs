@@ -18,6 +18,8 @@ const PLAYER_RADIUS: f32 = 10.0;
 const EPS: f32 = 1e-4;
 const FOV: f32 = 90.0;
 
+const SIDE_SHADING: f32 = 0.75;
+
 const MINIMAP_PADDING: f32 = 5.0;
 const MINIMAP_SIZE: f32 = 200.0;
 
@@ -77,26 +79,24 @@ fn draw_grid(d: &mut RaylibDrawHandle, boundary: Rectangle) {
     }
 }
 
-fn snap_step(p: Vector2, dir: Vector2) -> Vector2 {
+fn snap_step(p: Vector2, dir: Vector2) -> (Vector2, bool) {
     let cx = if dir.x > 0.0 { p.x.ceil() } else { p.x.floor() };
     let cy = if dir.y > 0.0 { p.y.ceil() } else { p.y.floor() };
 
     // Handle horizontal and vertical lines
     if dir.x == 0.0 {
-        return Vector2::new(p.x, cy);
+        return (Vector2::new(p.x, cy), false);
     }
 
     let m = dir.y / dir.x;
     let cxv = Vector2::new(cx, m * (cx - p.x) + p.y);
     let cyv = Vector2::new((cy - p.y) / m + p.x, cy);
 
-    let out = if (p - cxv).length_sqr() < (p - cyv).length_sqr() {
-        cxv
+    if (p - cxv).length_sqr() < (p - cyv).length_sqr() {
+        (cxv, true)
     } else {
-        cyv
-    };
-
-    out
+        (cyv, false)
+    }
 }
 
 // Returns whether a point is within an object placed on the grid
@@ -120,13 +120,14 @@ fn on_grid(p: Vector2) -> bool {
 fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Color>) {
     let mut p2 = p;
     loop {
-        p2 = snap_step(p2 + dir * EPS, dir);
+        let side: bool;
+        (p2, side) = snap_step(p2 + dir * EPS, dir);
 
         if !on_grid(p2) {
             return (p2, None);
         }
         if let Some(c) = collision(p2 + dir * EPS) {
-            return (p2, Some(c));
+            return (p2, Some(if side { c.alpha(SIDE_SHADING) } else { c }));
         }
     }
 }
@@ -222,7 +223,3 @@ fn main() {
         d.draw_fps(0, 0);
     }
 }
-/* TODO:
- * Textures!
- * Add shading
-*/
