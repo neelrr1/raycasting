@@ -1,16 +1,24 @@
 mod grid;
 
-use std::cmp::max;
+use std::f32::consts::PI;
 
 use grid::GRID;
 use raylib::prelude::*;
+const SCREEN_WIDTH: i32 = 800;
+const SCREEN_HEIGHT: i32 = 800;
+const TARGET_FPS: u32 = 120;
 const SPEED: f32 = 3.0;
 const SENS: f32 = 0.005;
 const GRID_ROWS: i32 = 10;
 const GRID_COLS: i32 = 10;
 const GRID_LINE_THICK: f32 = 1.0;
+const GRID_SIZE: f32 = 20.0;
 const PLAYER_RADIUS: f32 = 10.0;
 const EPS: f32 = 1e-3;
+const FOV: f32 = 90.0;
+
+const MINIMAP_PADDING: f32 = 5.0;
+const MINIMAP_SIZE: f32 = 200.0;
 
 fn wasd(d: &RaylibDrawHandle, p: &mut Vector2, dir: Vector2) {
     let inv_dir = Vector2::new(-dir.y, dir.x);
@@ -28,38 +36,38 @@ fn wasd(d: &RaylibDrawHandle, p: &mut Vector2, dir: Vector2) {
     }
 }
 
-fn draw_grid(d: &mut RaylibDrawHandle, grid_size: f32, boundary: Rectangle) {
+fn draw_grid(d: &mut RaylibDrawHandle, boundary: Rectangle) {
     for y in 0..GRID_ROWS {
         for x in 0..GRID_COLS {
             if let Some(c) = GRID[y as usize][x as usize] {
                 d.draw_rectangle_v(
                     Vector2::new(
-                        x as f32 * grid_size + boundary.x,
-                        y as f32 * grid_size + boundary.y,
+                        x as f32 * GRID_SIZE + boundary.x,
+                        y as f32 * GRID_SIZE + boundary.y,
                     ),
-                    Vector2::one().scale_by(grid_size),
+                    Vector2::one().scale_by(GRID_SIZE),
                     c,
                 );
             }
         }
     }
 
-    for y in 0..((boundary.height / grid_size) as i32 + 1) {
+    for y in 0..((boundary.height / GRID_SIZE) as i32 + 1) {
         d.draw_line_ex(
-            Vector2::new(boundary.x, boundary.y + grid_size * y as f32),
+            Vector2::new(boundary.x, boundary.y + GRID_SIZE * y as f32),
             Vector2::new(
                 boundary.x + boundary.width,
-                boundary.y + grid_size * y as f32,
+                boundary.y + GRID_SIZE * y as f32,
             ),
             GRID_LINE_THICK,
             Color::GRAY,
         );
     }
-    for x in 0..((boundary.width / grid_size) as i32 + 1) {
+    for x in 0..((boundary.width / GRID_SIZE) as i32 + 1) {
         d.draw_line_ex(
-            Vector2::new(boundary.x + grid_size * x as f32, boundary.y),
+            Vector2::new(boundary.x + GRID_SIZE * x as f32, boundary.y),
             Vector2::new(
-                boundary.x + grid_size * x as f32,
+                boundary.x + GRID_SIZE * x as f32,
                 boundary.y + boundary.height,
             ),
             GRID_LINE_THICK,
@@ -117,70 +125,73 @@ fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Color>) {
     loop {
         p2 = snap_step(p2 + dir * EPS, dir);
 
-        if !on_grid(p2) || i > max(GRID_ROWS, GRID_COLS) {
+        if !on_grid(p2) || i > 100 {
             return (p2, None);
         }
         if let Some(c) = collision(p2 + dir * EPS) {
             return (p2, Some(c));
         }
+        // i += 1
     }
 }
 
-fn minimap(
-    d: &mut RaylibDrawHandle,
-    boundary: Rectangle,
-    grid_size: f32,
-    player: Vector2,
-    dir: Vector2,
-) {
-    draw_grid(d, grid_size, boundary);
+fn dir_to_camera_plane(dir: Vector2) -> Vector2 {
+    Vector2::new(-dir.y, dir.x) * (0.5 / (FOV / 2.0 / 360.0 * 2.0 * PI).tan())
+}
+
+fn minimap(d: &mut RaylibDrawHandle, boundary: Rectangle, player: Vector2, dir: Vector2) {
+    draw_grid(d, boundary);
     let offset = Vector2::new(boundary.x, boundary.y);
 
     d.draw_circle_v(
-        player.scale_by(grid_size) + offset,
+        player.scale_by(GRID_SIZE) + offset,
         PLAYER_RADIUS,
         Color::MAGENTA,
     );
 
     // Draw FOV
     d.draw_line_ex(
-        player.scale_by(grid_size) + offset,
-        (player + dir).scale_by(grid_size) + offset,
+        player.scale_by(GRID_SIZE) + offset,
+        (player + dir).scale_by(GRID_SIZE) + offset,
         3.0,
         Color::BLUE,
     );
-    let camera_plane = Vector2::new(-dir.y, dir.x);
+    let camera_plane = dir_to_camera_plane(dir);
     d.draw_line_ex(
-        (player + dir).scale_by(grid_size) + offset,
-        (player + dir + camera_plane).scale_by(grid_size) + offset,
+        (player + dir).scale_by(GRID_SIZE) + offset,
+        (player + dir + camera_plane).scale_by(GRID_SIZE) + offset,
         3.0,
         Color::BLUE,
     );
     d.draw_line_ex(
-        (player + dir).scale_by(grid_size) + offset,
-        (player + dir - camera_plane).scale_by(grid_size) + offset,
+        (player + dir).scale_by(GRID_SIZE) + offset,
+        (player + dir - camera_plane).scale_by(GRID_SIZE) + offset,
         3.0,
         Color::BLUE,
     );
 }
 
 fn main() {
-    let (mut rl, thread) = raylib::init().size(800, 800).title("Raycasting").build();
-    rl.set_target_fps(120);
+    let (mut rl, thread) = raylib::init()
+        .size(SCREEN_WIDTH, SCREEN_HEIGHT)
+        .title("Raycasting")
+        .build();
+    rl.set_target_fps(TARGET_FPS);
 
-    let mut p1 = Vector2::new(GRID_COLS as f32 * 0.45, GRID_ROWS as f32 * 0.45);
+    let mut p1 = Vector2::new(GRID_COLS as f32 * 0.45, GRID_ROWS as f32 * 0.75);
     let mut dir: Vector2 = Vector2::new(0.0, -1.0);
-    let grid_size = 40.0;
+    rl.get_mouse_delta();
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::from_hex("181818").expect("Invalid color provided!"));
 
         wasd(&d, &mut p1, dir);
-        // dir always has a length of 1
+        // dir is always normalized (has a length of 1)
         dir.rotate(d.get_mouse_delta().x * SENS);
 
-        let ortho = Vector2::new(-dir.y, dir.x);
+        // since this vector is just half of the camera plane, make it length 0.5
+        let ortho = dir_to_camera_plane(dir);
         let camera_plane_start = p1 + dir - ortho;
         let camera_plane_end = p1 + dir + ortho;
 
@@ -190,10 +201,11 @@ fn main() {
             let (p2, collided_color) = find_collision(p1, t - p1);
 
             if let Some(c) = collided_color {
-                let h = 1.0 / p1.distance_to(p2) * d.get_screen_height() as f32;
+                let mut h = 1.0 / (p2 - p1).dot(dir);
+                h *= d.get_screen_height() as f32;
                 d.draw_line_v(
-                    Vector2::new(x as f32, (d.get_screen_height() as f32 - h / 2.0) / 2.0),
-                    Vector2::new(x as f32, (d.get_screen_height() as f32 + h / 2.0) / 2.0),
+                    Vector2::new(x as f32, (d.get_screen_height() as f32 - h) / 2.0),
+                    Vector2::new(x as f32, (d.get_screen_height() as f32 + h) / 2.0),
                     c,
                 )
             }
@@ -201,12 +213,16 @@ fn main() {
 
         minimap(
             &mut d,
-            Rectangle::new(5.0, 5.0, 400.0, 200.0),
-            grid_size,
+            Rectangle::new(
+                SCREEN_WIDTH as f32 - MINIMAP_SIZE - MINIMAP_PADDING,
+                MINIMAP_PADDING,
+                MINIMAP_SIZE,
+                MINIMAP_SIZE,
+            ),
             p1,
             dir,
         );
 
-        // d.draw_fps(0, 0);
+        d.draw_fps(0, 0);
     }
 }
