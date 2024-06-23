@@ -226,3 +226,7 @@ fn main() {
         d.draw_fps(0, 0);
     }
 }
+/* TODO:
+ * Bug fix - lowering EPS value causes infinite loop in collision detector
+ * Textures!
+*/
