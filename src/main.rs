@@ -214,6 +214,8 @@ fn main() {
         .title("Raycasting")
         .build();
     rl.set_target_fps(TARGET_FPS);
+    rl.hide_cursor();
+    rl.disable_cursor();
 
     let mut p1 = Vector2::new(GRID_COLS as f32 * 0.45, GRID_ROWS as f32 * 0.75);
     let mut dir: Vector2 = Vector2::new(0.0, -1.0);
@@ -235,6 +237,16 @@ fn main() {
     rl.get_mouse_delta();
 
     while !rl.window_should_close() {
+        if rl.is_key_pressed(KeyboardKey::KEY_TAB) {
+            if rl.is_cursor_hidden() {
+                rl.enable_cursor();
+                rl.show_cursor();
+            } else {
+                rl.disable_cursor();
+                rl.hide_cursor();
+            }
+        }
+
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::from_hex("181818").expect("Invalid color provided!"));
 
