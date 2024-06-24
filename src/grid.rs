@@ -1,8 +1,6 @@
-use raylib::color::Color;
-
 use crate::{GRID_COLS, GRID_ROWS};
 
-pub const GRID: [[Option<Color>; GRID_COLS as usize]; GRID_ROWS as usize] = [
+pub const GRID: [[Option<&str>; GRID_COLS as usize]; GRID_ROWS as usize] = [
     [None, None, None, None, None, None, None, None, None, None],
     [None, None, None, None, None, None, None, None, None, None],
     [None, None, None, None, None, None, None, None, None, None],
@@ -10,9 +8,9 @@ pub const GRID: [[Option<Color>; GRID_COLS as usize]; GRID_ROWS as usize] = [
         None,
         None,
         None,
-        Some(Color::YELLOW),
-        Some(Color::MAGENTA),
-        Some(Color::GREEN),
+        Some("redbrick.png"),
+        Some("eagle.png"),
+        Some("redbrick.png"),
         None,
         None,
         None,
@@ -22,16 +20,27 @@ pub const GRID: [[Option<Color>; GRID_COLS as usize]; GRID_ROWS as usize] = [
         None,
         None,
         None,
-        Some(Color::RED),
+        Some("wood.png"),
         None,
-        Some(Color::BLUE),
+        Some("colorstone.png"),
         None,
         None,
         None,
         None,
     ],
     [None, None, None, None, None, None, None, None, None, None],
-    [None, None, None, None, None, None, None, None, None, None],
+    [
+        None,
+        None,
+        None,
+        None,
+        Some("purplestone.png"),
+        None,
+        None,
+        None,
+        None,
+        None,
+    ],
     [None, None, None, None, None, None, None, None, None, None],
     [None, None, None, None, None, None, None, None, None, None],
     [None, None, None, None, None, None, None, None, None, None],

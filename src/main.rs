@@ -1,11 +1,12 @@
 mod grid;
 
-use std::f32::consts::PI;
+use std::{collections::HashMap, f32::consts::PI};
 
 use grid::GRID;
 use raylib::prelude::*;
-const SCREEN_WIDTH: i32 = 800;
-const SCREEN_HEIGHT: i32 = 800;
+const FACTOR: i32 = 400;
+const SCREEN_WIDTH: i32 = 3 * FACTOR;
+const SCREEN_HEIGHT: i32 = 2 * FACTOR;
 const TARGET_FPS: u32 = 120;
 const SPEED: f32 = 3.0;
 const SENS: f32 = 0.005;
@@ -39,17 +40,27 @@ fn wasd(d: &RaylibDrawHandle, p: &mut Vector2, dir: Vector2) {
     }
 }
 
-fn draw_grid(d: &mut RaylibDrawHandle, boundary: Rectangle) {
+fn draw_grid(
+    d: &mut RaylibDrawHandle,
+    boundary: Rectangle,
+    tex_map: &mut HashMap<&str, Texture2D>,
+) {
     for y in 0..GRID_ROWS {
         for x in 0..GRID_COLS {
-            if let Some(c) = GRID[y as usize][x as usize] {
-                d.draw_rectangle_v(
-                    Vector2::new(
+            if let Some(filename) = GRID[y as usize][x as usize] {
+                let tex = tex_map.get(filename).unwrap();
+                d.draw_texture_pro(
+                    tex,
+                    Rectangle::new(0.0, 0.0, tex.width() as f32, tex.height() as f32),
+                    Rectangle::new(
                         x as f32 * GRID_SIZE + boundary.x,
                         y as f32 * GRID_SIZE + boundary.y,
+                        GRID_SIZE,
+                        GRID_SIZE,
                     ),
-                    Vector2::one().scale_by(GRID_SIZE),
-                    c,
+                    Vector2::zero(),
+                    0.0,
+                    Color::WHITE,
                 );
             }
         }
@@ -79,6 +90,7 @@ fn draw_grid(d: &mut RaylibDrawHandle, boundary: Rectangle) {
     }
 }
 
+// side is true if snapped to x, else false
 fn snap_step(p: Vector2, dir: Vector2) -> (Vector2, bool) {
     let cx = if dir.x > 0.0 { p.x.ceil() } else { p.x.floor() };
     let cy = if dir.y > 0.0 { p.y.ceil() } else { p.y.floor() };
@@ -100,7 +112,7 @@ fn snap_step(p: Vector2, dir: Vector2) -> (Vector2, bool) {
 }
 
 // Returns whether a point is within an object placed on the grid
-fn collision(p: Vector2) -> Option<Color> {
+fn collision(p: Vector2) -> Option<&'static str> {
     let y = p.y.floor();
     let x = p.x.floor();
 
@@ -117,7 +129,13 @@ fn on_grid(p: Vector2) -> bool {
     x >= 0.0 && x < GRID[0].len() as f32 && y >= 0.0 && y < GRID.len() as f32
 }
 
-fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Color>) {
+struct Collision {
+    texture: &'static str,
+    color: Color,
+    idx: f32,
+}
+
+fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Collision>) {
     let mut p2 = p;
     loop {
         let side: bool;
@@ -126,8 +144,24 @@ fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Color>) {
         if !on_grid(p2) {
             return (p2, None);
         }
-        if let Some(c) = collision(p2 + dir * EPS) {
-            return (p2, Some(if side { c.alpha(SIDE_SHADING) } else { c }));
+        if let Some(filename) = collision(p2 + dir * EPS) {
+            // coordinate to look up in the texture
+            let x = if side {
+                p2.y - p2.y.floor()
+            } else {
+                p2.x - p2.x.floor()
+            };
+
+            let c = Color::WHITE;
+
+            return (
+                p2,
+                Some(Collision {
+                    texture: &filename,
+                    color: if side { c.alpha(SIDE_SHADING) } else { c },
+                    idx: x,
+                }),
+            );
         }
     }
 }
@@ -136,8 +170,14 @@ fn dir_to_camera_plane(dir: Vector2) -> Vector2 {
     Vector2::new(-dir.y, dir.x) * (0.5 / (FOV / 2.0 / 360.0 * 2.0 * PI).tan())
 }
 
-fn minimap(d: &mut RaylibDrawHandle, boundary: Rectangle, player: Vector2, dir: Vector2) {
-    draw_grid(d, boundary);
+fn minimap(
+    d: &mut RaylibDrawHandle,
+    tex_map: &mut HashMap<&str, Texture2D>,
+    boundary: Rectangle,
+    player: Vector2,
+    dir: Vector2,
+) {
+    draw_grid(d, boundary, tex_map);
     let offset = Vector2::new(boundary.x, boundary.y);
 
     d.draw_circle_v(
@@ -177,6 +217,21 @@ fn main() {
 
     let mut p1 = Vector2::new(GRID_COLS as f32 * 0.45, GRID_ROWS as f32 * 0.75);
     let mut dir: Vector2 = Vector2::new(0.0, -1.0);
+
+    // Load textures
+    let mut tex_map = HashMap::new();
+    for y in 0..GRID_ROWS {
+        for x in 0..GRID_COLS {
+            if let Some(filename) = GRID[y as usize][x as usize] {
+                tex_map.insert(
+                    filename,
+                    rl.load_texture(&thread, &format!("res/{}", &filename))
+                        .expect("Failed to load texture!"),
+                );
+            }
+        }
+    }
+
     rl.get_mouse_delta();
 
     while !rl.window_should_close() {
@@ -195,21 +250,27 @@ fn main() {
         for x in 0..d.get_screen_width() {
             let t =
                 camera_plane_start.lerp(camera_plane_end, x as f32 / d.get_screen_width() as f32);
-            let (p2, collided_color) = find_collision(p1, t - p1);
+            let (p2, collision) = find_collision(p1, t - p1);
 
-            if let Some(c) = collided_color {
+            if let Some(c) = collision {
                 let mut h = 1.0 / (p2 - p1).dot(dir);
-                h *= d.get_screen_height() as f32;
-                d.draw_line_v(
-                    Vector2::new(x as f32, (d.get_screen_height() as f32 - h) / 2.0),
-                    Vector2::new(x as f32, (d.get_screen_height() as f32 + h) / 2.0),
-                    c,
-                )
+                h *= d.get_screen_width() as f32; // scale height based on aspect ratio
+                let tex = tex_map.get(c.texture).unwrap();
+
+                d.draw_texture_pro(
+                    tex,
+                    Rectangle::new(c.idx * tex.width() as f32, 0.0, 1.0, tex.height() as f32),
+                    Rectangle::new(x as f32, (d.get_screen_height() as f32 - h) / 2.0, 1.0, h),
+                    Vector2::zero(),
+                    0.0,
+                    c.color,
+                );
             }
         }
 
         minimap(
             &mut d,
+            &mut tex_map,
             Rectangle::new(
                 SCREEN_WIDTH as f32 - MINIMAP_SIZE - MINIMAP_PADDING,
                 MINIMAP_PADDING,
