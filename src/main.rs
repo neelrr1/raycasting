@@ -24,6 +24,8 @@ const MINIMAP_PADDING: f32 = 5.0;
 const MINIMAP_SIZE: f32 = 200.0;
 const GRID_SIZE: f32 = MINIMAP_SIZE / GRID_ROWS as f32;
 
+const LOOP_LIMIT: i32 = 100;
+
 fn wasd(d: &RaylibDrawHandle, p: &mut Vector2, dir: Vector2) {
     let inv_dir = Vector2::new(-dir.y, dir.x);
     if d.is_key_down(KeyboardKey::KEY_A) {
@@ -135,7 +137,16 @@ struct Collision {
     idx: f32,
 }
 
-fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Collision>) {
+fn find_collision(mut p: Vector2, dir: Vector2) -> (Vector2, Option<Collision>) {
+    let mut i = 0;
+    while !on_grid(p + dir * EPS) {
+        (p, _) = snap_step(p + dir * EPS, dir);
+        i += 1;
+        if i > LOOP_LIMIT {
+            break;
+        }
+    }
+
     let mut p2 = p;
     loop {
         let side: bool;
@@ -157,7 +168,7 @@ fn find_collision(p: Vector2, dir: Vector2) -> (Vector2, Option<Collision>) {
             return (
                 p2,
                 Some(Collision {
-                    texture: &filename,
+                    texture: filename,
                     color: if side { c.alpha(SIDE_SHADING) } else { c },
                     idx: x,
                 }),
