@@ -18,7 +18,7 @@ const PLAYER_RADIUS: f32 = 10.0;
 const EPS: f32 = 1e-4;
 const FOV: f32 = 90.0;
 
-const SIDE_SHADING: f32 = 0.85;
+const SIDE_BRIGHTNESS: f32 = -0.25;
 
 const MINIMAP_PADDING: f32 = 5.0;
 const MINIMAP_SIZE: f32 = 200.0;
@@ -169,7 +169,11 @@ fn find_collision(mut p: Vector2, dir: Vector2) -> (Vector2, Option<Collision>) 
                 p2,
                 Some(Collision {
                     texture: filename,
-                    color: if side { c.alpha(SIDE_SHADING) } else { c },
+                    color: if side {
+                        c.brightness(SIDE_BRIGHTNESS)
+                    } else {
+                        c
+                    },
                     idx: x,
                 }),
             );
@@ -269,6 +273,15 @@ fn main() {
         let ortho = dir_to_camera_plane(dir);
         let camera_plane_start = p1 + dir - ortho;
         let camera_plane_end = p1 + dir + ortho;
+
+        // Draw floor
+        d.draw_rectangle(
+            0,
+            SCREEN_HEIGHT / 2,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT / 2,
+            Color::DARKSLATEGRAY,
+        );
 
         for x in 0..d.get_screen_width() {
             let t =
